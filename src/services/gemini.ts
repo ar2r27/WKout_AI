@@ -20,10 +20,10 @@ Zasady:
    - Zgłoszone kontuzje, ograniczenia ruchowe i bóle stawów
    - Preferowaną częstotliwość (dni w tygodniu) i czas trwania jednostki treningowej.
 2. Gdy użytkownik prosi o:
-   - Ułożenie nowego planu treningowego,
-   - Zmianę lub modyfikację planu,
-   odpowiedz zwięźle i profesjonalnie, a na końcu odpowiedzi ZAWSZE dołącz poprawny blok JSON oznaczony etykietą \`\`\`json:wkout_plan
-   Format JSON planu:
+    - Ułożenie nowego planu treningowego,
+    - Zmianę lub modyfikację planu,
+    w pierwszej części odpowiedzi przedstaw zwięźle założenia i zalecenia, a na samym końcu odpowiedzi ZAWSZE dołącz poprawny składniowo blok JSON w znacznikach \`\`\`json
+    Format JSON planu:
    {
      "title": "Nazwa planu",
      "description": "Krótki opis założeń",
@@ -117,7 +117,7 @@ export async function sendChatMessageToGemini(
         contents: conversationTurns,
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 2048
+          maxOutputTokens: 8192
         }
       })
     });
@@ -144,54 +144,158 @@ export async function sendChatMessageToGemini(
 }
 
 /**
+ * Repairs commonly broken LLM JSON (trailing commas, unclosed brackets/braces, unquoted keys, single quotes)
+ */
+function repairAndParseJSON(raw: string): any {
+  if (!raw || typeof raw !== 'string') return null;
+
+  let cleaned = raw.trim();
+  // Strip JS/markdown comments
+  cleaned = cleaned.replace(/\/\/.*$/gm, '');
+  // Strip trailing commas before } or ]
+  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (_) {
+    // Continue to repair attempts
+  }
+
+  // Bracket/brace balancing for truncated outputs
+  const stack: string[] = [];
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (ch === '{' || ch === '[') {
+        stack.push(ch);
+      } else if (ch === '}' && stack[stack.length - 1] === '{') {
+        stack.pop();
+      } else if (ch === ']' && stack[stack.length - 1] === '[') {
+        stack.pop();
+      }
+    }
+  }
+
+  let repaired = cleaned;
+  if (inString) repaired += '"';
+  repaired = repaired.trim().replace(/,\s*$/, '');
+  while (stack.length > 0) {
+    const open = stack.pop();
+    if (open === '{') repaired += '}';
+    else if (open === '[') repaired += ']';
+  }
+  repaired = repaired.replace(/,\s*([\]}])/g, '$1');
+
+  try {
+    return JSON.parse(repaired);
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
  * Extracts structured workout plan or swap data from the AI output
  */
 function parseAIResponse(text: string): AIResponseResult {
   let cleanText = text;
   let proposedPlan: WorkoutPlan | undefined = undefined;
 
-  // Check for json:wkout_plan or standard json block
-  const jsonMatch = text.match(/```json(?::wkout_plan)?\s*([\s\S]*?)\s*```/);
-  if (jsonMatch && jsonMatch[1]) {
-    try {
-      const parsed = JSON.parse(jsonMatch[1]);
-      if (parsed.title && Array.isArray(parsed.days)) {
-        proposedPlan = {
-          id: `plan-${Date.now()}`,
-          title: parsed.title,
-          description: parsed.description || 'Plan wygenerowany przez Trenera AI',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isActive: false,
-          goal: parsed.goal || 'Sylwetka i siła',
-          level: parsed.level || 'Średniozaawansowany',
-          author: 'ai',
-          days: parsed.days.map((day: any, dIdx: number) => ({
-            id: day.id || `day-${dIdx + 1}`,
-            name: day.name || `Dzień ${dIdx + 1}`,
-            targetFocus: day.targetFocus || 'Trening',
-            estimatedDuration: day.estimatedDuration || 60,
-            exercises: (day.exercises || []).map((ex: any, eIdx: number) => ({
-              id: ex.id || `ex-${dIdx + 1}-${eIdx + 1}`,
-              exerciseId: ex.exerciseId || `custom-${eIdx + 1}`,
-              name: ex.name,
-              muscleGroup: ex.muscleGroup || 'Ogólne',
-              equipment: ex.equipment || 'Sprzęt siłowni',
-              targetSets: Number(ex.targetSets) || 3,
-              targetReps: String(ex.targetReps || '8-10'),
-              targetRpe: ex.targetRpe ? Number(ex.targetRpe) : 8,
-              restSeconds: Number(ex.restSeconds) || 90,
-              notes: ex.notes || ''
-            }))
-          }))
-        };
+  let jsonCandidate: string | null = null;
+  let matchedSegment: string | null = null;
 
-        // Remove the raw JSON block from displayed chat text for clean typography
-        cleanText = text.replace(/```json(?::wkout_plan)?\s*[\s\S]*?\s*```/, '').trim();
-      }
-    } catch (e) {
-      console.warn('Could not parse workout plan JSON from AI response:', e);
+  // 1. Try markdown code fences: ```json, ```json:wkout_plan, ```JSON, or generic ``` containing {
+  const fenceRegex = /```(?:json(?::wkout_plan)?|JSON)?\s*([\s\S]*?)(?:```|$)/i;
+  const fenceMatch = text.match(fenceRegex);
+  if (fenceMatch && fenceMatch[1] && fenceMatch[1].includes('{')) {
+    jsonCandidate = fenceMatch[1];
+    matchedSegment = fenceMatch[0];
+  }
+
+  // 2. If no fence matched, look for raw JSON block starting with {"title" or {"days"
+  if (!jsonCandidate) {
+    const rawMatch = text.match(/\{[\s\S]*?"(?:title|days)"[\s\S]*\}/i);
+    if (rawMatch) {
+      jsonCandidate = rawMatch[0];
+      matchedSegment = rawMatch[0];
     }
+  }
+
+  // 3. Parse and construct plan if valid
+  if (jsonCandidate) {
+    const parsed = repairAndParseJSON(jsonCandidate);
+    if (parsed && (parsed.title || parsed.days) && (Array.isArray(parsed.days) || Array.isArray(parsed.exercises))) {
+      const days = Array.isArray(parsed.days)
+        ? parsed.days
+        : [
+            {
+              id: 'day-1',
+              name: 'Trening Główny',
+              targetFocus: parsed.goal || 'Całe ciało',
+              estimatedDuration: 60,
+              exercises: parsed.exercises || []
+            }
+          ];
+
+      proposedPlan = {
+        id: `plan-${Date.now()}`,
+        title: parsed.title || 'Plan Treningowy od Trenera AI',
+        description: parsed.description || 'Plan wygenerowany i zoptymalizowany przez Trenera AI',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isActive: false,
+        goal: parsed.goal || 'Sylwetka i siła',
+        level: parsed.level || 'Dopasowany',
+        author: 'ai',
+        days: days.map((day: any, dIdx: number) => ({
+          id: day.id || `day-${dIdx + 1}`,
+          name: day.name || `Dzień ${dIdx + 1}`,
+          targetFocus: day.targetFocus || 'Trening',
+          estimatedDuration: Number(day.estimatedDuration) || 60,
+          exercises: (day.exercises || []).map((ex: any, eIdx: number) => ({
+            id: ex.id || `ex-${dIdx + 1}-${eIdx + 1}`,
+            exerciseId: ex.exerciseId || `custom-${eIdx + 1}`,
+            name: ex.name || 'Ćwiczenie',
+            muscleGroup: ex.muscleGroup || 'Ogólne',
+            equipment: ex.equipment || 'Sprzęt siłowni',
+            targetSets: Number(ex.targetSets) || 3,
+            targetReps: String(ex.targetReps || '8-10'),
+            targetRpe: ex.targetRpe ? Number(ex.targetRpe) : 8,
+            restSeconds: Number(ex.restSeconds) || 90,
+            notes: ex.notes || ''
+          }))
+        }))
+      };
+
+      // Strip the raw JSON segment from user-visible text
+      if (matchedSegment) {
+        cleanText = text.replace(matchedSegment, '').trim();
+      }
+    }
+  }
+
+  // 4. Also clean up any lingering unclosed code fences or raw JSON remnants so the user NEVER sees raw code dumps
+  cleanText = cleanText
+    .replace(/```(?:json(?::wkout_plan)?|JSON)?\s*[\s\S]*?(?:```|$)/gi, '')
+    .trim();
+
+  // If the AI returned ONLY json with no conversational text, provide a polite default message
+  if (!cleanText) {
+    cleanText = 'Przygotowałem dla Ciebie spersonalizowany plan treningowy dopasowany do Twojego profilu i sprzętu. Znajdziesz go poniżej!';
   }
 
   return {

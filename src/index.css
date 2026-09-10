@@ -17,11 +17,18 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
-    user-select: none;
+    user-select: text;
+    -webkit-user-select: text;
   }
 
-  input, textarea {
-    user-select: text;
+  button, nav {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  input, textarea, .chat-bubble, pre, code {
+    user-select: text !important;
+    -webkit-user-select: text !important;
   }
 }
 

@@ -5,7 +5,9 @@ import {
   Sparkles,
   Trash2,
   Check,
-  Calendar
+  Calendar,
+  Copy,
+  Play
 } from 'lucide-react';
 import { ChatMessage, WorkoutPlan, UserProfile, AppSettings } from '../types';
 
@@ -19,6 +21,7 @@ interface AICoachChatProps {
   currentPlan: WorkoutPlan | null;
   settings: AppSettings;
   onOpenSettings: () => void;
+  onGoToWorkout?: () => void;
 }
 
 export const AICoachChat: React.FC<AICoachChatProps> = ({
@@ -30,11 +33,35 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
   profile,
   currentPlan,
   settings,
-  onOpenSettings
+  onOpenSettings,
+  onGoToWorkout
 }) => {
   const [inputText, setInputText] = useState('');
   const [appliedPlanId, setAppliedPlanId] = useState<string | null>(null);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyMessage = async (msgId: string, content: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(content);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = content;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedMsgId(msgId);
+      setTimeout(() => setCopiedMsgId(null), 2000);
+    } catch (err) {
+      console.warn('Copy failed:', err);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -128,13 +155,19 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
             );
           }
 
+          const isPlanActive =
+            (msg.action?.type === 'plan_proposal' &&
+              msg.action.planData &&
+              (currentPlan?.id === msg.action.planData.id || appliedPlanId === msg.action.planData.id)) ||
+            false;
+
           return (
             <div
               key={msg.id}
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[90%] sm:max-w-[80%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-md ${
+                className={`max-w-[90%] sm:max-w-[80%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-md chat-bubble select-text ${
                   isUser
                     ? 'bg-gradient-to-br from-zinc-800 to-zinc-850 text-white border border-zinc-700/60 rounded-tr-sm'
                     : 'bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-tl-sm'
@@ -148,7 +181,7 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
                 )}
 
                 {/* Message Content formatted with linebreaks */}
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <div className="whitespace-pre-wrap select-text">{msg.content}</div>
 
                 {/* Action Card: Proposed Plan */}
                 {msg.action?.type === 'plan_proposal' && msg.action.planData && (
@@ -183,37 +216,59 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
                       ))}
                     </div>
 
-                    {/* Apply Plan Button */}
-                    <button
-                      onClick={() => handleApplyProposedPlan(msg.action!.planData!)}
-                      disabled={appliedPlanId === msg.action.planData.id}
-                      className={`mt-4 w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition ${
-                        appliedPlanId === msg.action.planData.id
-                          ? 'bg-zinc-800 text-zinc-400 cursor-default'
-                          : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black shadow-glow-green'
-                      }`}
-                    >
-                      {appliedPlanId === msg.action.planData.id ? (
-                        <>
-                          <Check className="w-4 h-4" /> Plan Zastosowany
-                        </>
-                      ) : (
-                        <>
-                          <Check className="w-4 h-4" /> Zastosuj ten plan do mojego profilu
-                        </>
-                      )}
-                    </button>
+                    {/* Apply Plan Button or Active State */}
+                    {isPlanActive ? (
+                      <div className="mt-4 flex flex-col sm:flex-row items-center gap-2">
+                        <div className="flex-1 w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center gap-2">
+                          <Check className="w-4 h-4" /> Plan jest aktywny w Twoim treningu
+                        </div>
+                        {onGoToWorkout && (
+                          <button
+                            onClick={onGoToWorkout}
+                            className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-extrabold text-xs bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center gap-1.5 transition whitespace-nowrap shadow-glow-green"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-black" /> Rozpocznij trening
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleApplyProposedPlan(msg.action!.planData!)}
+                        className="mt-4 w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black shadow-glow-green"
+                      >
+                        <Check className="w-4 h-4" /> Zastosuj ten plan do mojego profilu
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Timestamp */}
-              <span className="text-[10px] text-zinc-600 mt-1 px-1">
-                {new Date(msg.timestamp).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
+              {/* Timestamp and Copy Action */}
+              <div className="flex items-center gap-2 mt-1 px-1 text-[10px] text-zinc-500">
+                <span>
+                  {new Date(msg.timestamp).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+                <button
+                  onClick={() => handleCopyMessage(msg.id, msg.content)}
+                  className="inline-flex items-center gap-1 text-zinc-400 hover:text-zinc-200 transition py-0.5 px-1.5 rounded hover:bg-zinc-800"
+                  title="Kopiuj treść wiadomości"
+                >
+                  {copiedMsgId === msg.id ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      <span className="text-emerald-400 font-semibold">Skopiowano</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>Kopiuj</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           );
         })}

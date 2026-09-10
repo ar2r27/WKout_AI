@@ -201,22 +201,24 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleApplyPlanFromAI = async (plan: WorkoutPlan) => {
+  const handleApplyPlanFromAI = async (plan: WorkoutPlan, suppressChatMessage = false) => {
     plan.isActive = true;
-    const updatedPlans = [plan, ...plans.map((p) => ({ ...p, isActive: false }))];
+    const updatedPlans = [plan, ...plans.filter((p) => p.id !== plan.id).map((p) => ({ ...p, isActive: false }))];
     await saveWorkoutPlans(updatedPlans);
     await setActivePlanId(plan.id);
     setPlans(updatedPlans);
     setActivePlan(plan);
 
-    const confirmMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'system',
-      content: `Plan "${plan.title}" został pomyślnie ustawiony jako Twój aktywny plan treningowy. Możesz przejść do zakładki Trening lub Plany, aby rozpocząć!`,
-      timestamp: new Date().toISOString()
-    };
-    setChatMessages((prev) => [...prev, confirmMsg]);
-    await appendChatMessage(confirmMsg);
+    if (!suppressChatMessage) {
+      const confirmMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: 'system',
+        content: `Plan "${plan.title}" został pomyślnie ustawiony jako Twój aktywny plan treningowy. Możesz przejść do zakładki Trening lub Plany, aby rozpocząć!`,
+        timestamp: new Date().toISOString()
+      };
+      setChatMessages((prev) => [...prev, confirmMsg]);
+      await appendChatMessage(confirmMsg);
+    }
   };
 
   // PROFILE SAVING
@@ -267,6 +269,11 @@ export const App: React.FC = () => {
       const finalMessages = [...updatedWithUser, coachMsg];
       setChatMessages(finalMessages);
       await appendChatMessage(coachMsg);
+
+      // Automatically activate the newly created plan in training if no active plan exists or requested from profile
+      if (response.proposedPlan && (!activePlan || overrideProfile)) {
+        await handleApplyPlanFromAI(response.proposedPlan, false);
+      }
     } catch (err: any) {
       console.error('Error generating AI coach response:', err);
       const errorMsg: ChatMessage = {
@@ -395,6 +402,7 @@ Przeanalizuj te dane i przygotuj dla mnie dopasowany, kompletny plan treningowy.
             currentPlan={activePlan}
             settings={settings}
             onOpenSettings={() => setIsBackupModalOpen(true)}
+            onGoToWorkout={() => setCurrentTab('workout')}
           />
         )}
 
