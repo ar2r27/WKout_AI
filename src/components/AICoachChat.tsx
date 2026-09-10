@@ -231,8 +231,8 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
               </div>
 
               {/* Timestamp and Copy Action */}
-              <div className="flex items-center gap-2 mt-1 px-1 text-[10px] text-zinc-500">
-                <span>
+              <div className="flex items-center justify-between w-full max-w-[90%] sm:max-w-[80%] mt-1 px-1">
+                <span className="text-[11px] text-zinc-500 font-mono">
                   {new Date(msg.timestamp).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit'
@@ -240,17 +240,21 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
                 </span>
                 <button
                   onClick={() => handleCopyMessage(msg.id, msg.content)}
-                  className="inline-flex items-center gap-1 text-zinc-400 hover:text-zinc-200 transition py-0.5 px-1.5 rounded hover:bg-zinc-800"
-                  title="Kopiuj treść wiadomości"
+                  className={`inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-lg border transition ${
+                    copiedMsgId === msg.id
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold shadow-sm'
+                      : 'bg-zinc-850 hover:bg-zinc-800 text-zinc-300 hover:text-white border-zinc-700/60 shadow-sm'
+                  }`}
+                  title="Kopiuj treść wiadomości do schowka"
                 >
                   {copiedMsgId === msg.id ? (
                     <>
-                      <Check className="w-3 h-3 text-emerald-400" />
-                      <span className="text-emerald-400 font-semibold">Skopiowano</span>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-300">Skopiowano!</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3 h-3" />
+                      <Copy className="w-3.5 h-3.5 text-zinc-400" />
                       <span>Kopiuj</span>
                     </>
                   )}

@@ -28,6 +28,8 @@ Zasady:
 3. Bądź pomocny, profesjonalny i precyzyjny. Nie używaj emotikonów - zachowaj przejrzysty, techniczny styl raportu sportowego.
 4. Jeśli użytkownik zgłasza ból lub kontuzję, natychmiast zaproponuj bezpieczny zamiennik i wyjaśnij biomechaniczną przyczynę.
 5. ZAWSZE odpowiadaj WYŁĄCZNIE w roli trenera personalnego. Twoim jedynym zadaniem jest układanie i modyfikowanie planów treningowych, dobór ćwiczeń i obciążeń oraz regeneracja. Nigdy nie dyskutuj o wersjach modeli AI, parametrach LLM ani architekturze sztucznej inteligencji.
+6. Gdy użytkownik pisze "Akceptuje", "Zatwierdzam" lub zatwierdza plan:
+   Odpowiedz krótko i po ludzku z motywacją, życząc udanego treningu. Nigdy nie wypisuj ponownie kodu ani JSON.
 `;
 
 /**
@@ -38,7 +40,7 @@ function cleanTextFromJSON(text: string): string {
   // Strip code blocks
   cleaned = cleaned.replace(/```(?:json(?::wkout_plan)?|JSON)?[\s\S]*?(?:```|$)/gi, '');
   // Strip raw JSON object beginnings
-  cleaned = cleaned.replace(/\{\s*"(?:title|days|name|description|goal)"[\s\S]*$/gi, '');
+  cleaned = cleaned.replace(/\{\s*"(?:title|days|name|description|goal|exercises)"[\s\S]*$/gi, '');
   // Strip standalone backticks
   cleaned = cleaned.replace(/```/g, '');
   return cleaned.trim();

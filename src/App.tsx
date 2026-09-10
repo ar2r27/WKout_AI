@@ -228,6 +228,36 @@ export const App: React.FC = () => {
   };
 
   // CHAT & AI COACH INTERACTION
+  const isPlanAcceptanceMessage = (text: string) => {
+    const t = text.trim().toLowerCase();
+    return (
+      t === 'akceptuje' ||
+      t === 'akceptuję' ||
+      t === 'akceptacja' ||
+      t === 'zatwierdzam' ||
+      t === 'zgadzam się' ||
+      t === 'zgoda' ||
+      t === 'biorę' ||
+      t === 'biorę to' ||
+      t === 'biorę ten plan' ||
+      t === 'dodaj' ||
+      t === 'dodaj plan' ||
+      t === 'dodaj trening' ||
+      t === 'zastosuj' ||
+      t === 'zastosuj plan' ||
+      t === 'zapisz plan' ||
+      t === 'ok' ||
+      t === 'okej' ||
+      t === 'dobrze' ||
+      t === 'tak' ||
+      t.startsWith('akceptuj') ||
+      t.startsWith('zatwierd') ||
+      t.includes('dodaj ten plan') ||
+      t.includes('dodaj do treningu') ||
+      t.includes('zapisz ten plan')
+    );
+  };
+
   const handleSendUserMessage = async (content: string, overrideProfile?: UserProfile) => {
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -239,6 +269,34 @@ export const App: React.FC = () => {
     const updatedWithUser = [...chatMessages, userMsg];
     setChatMessages(updatedWithUser);
     await appendChatMessage(userMsg);
+
+    // If user says "Akceptuje" and there is a proposed plan in chat history, apply it immediately without calling Gemini!
+    if (isPlanAcceptanceMessage(content)) {
+      const pendingProposal = [...chatMessages]
+        .reverse()
+        .find((m) => m.action?.type === 'plan_proposal' && m.action.planData);
+
+      if (pendingProposal && pendingProposal.action?.planData) {
+        const planToApply = pendingProposal.action.planData;
+        await handleApplyPlanFromAI(planToApply, true);
+
+        const coachAckMsg: ChatMessage = {
+          id: `msg-${Date.now() + 1}`,
+          role: 'assistant',
+          content: `Świetnie! Twój plan "${planToApply.title}" został zaakceptowany i dodany do aplikacji. Wszystkie dni i ćwiczenia są już gotowe w zakładce Trening. Powodzenia na pierwszej sesji!`,
+          timestamp: new Date().toISOString(),
+          action: {
+            type: 'plan_proposal',
+            planData: planToApply
+          }
+        };
+
+        const finalMsgs = [...updatedWithUser, coachAckMsg];
+        setChatMessages(finalMsgs);
+        await appendChatMessage(coachAckMsg);
+        return;
+      }
+    }
 
     setIsCoachLoading(true);
 
@@ -270,8 +328,8 @@ export const App: React.FC = () => {
       setChatMessages(finalMessages);
       await appendChatMessage(coachMsg);
 
-      // Automatically activate the newly created plan in training if no active plan exists or requested from profile
-      if (response.proposedPlan && (!activePlan || overrideProfile)) {
+      // Automatically activate the newly created plan in training if user accepted or requested adaptation from profile
+      if (response.proposedPlan && (isPlanAcceptanceMessage(content) || !activePlan || overrideProfile)) {
         await handleApplyPlanFromAI(response.proposedPlan, false);
       }
     } catch (err: any) {
@@ -301,7 +359,7 @@ Dni treningowe w tygodniu: ${updatedProfile.daysPerWeek}
 Czas na sesję: ok. ${updatedProfile.sessionDuration} minut
 Ograniczenia / kontuzje / uwagi: "${updatedProfile.injuries || 'brak'}"
 
-Przeanalizuj te dane i przygotuj dla mnie dopasowany, kompletny plan treningowy. Zwróć go w formacie JSON planu treningowego, abym mógł go jednym kliknięciem zatwierdzić do mojego profilu.`;
+Przeanalizuj te dane i ułóż dla mnie dopasowany, kompletny plan treningowy z podziałem na dni i ćwiczenia.`;
 
     handleSendUserMessage(prompt, updatedProfile);
   };
@@ -340,7 +398,7 @@ Przeanalizuj te dane i przygotuj dla mnie dopasowany, kompletny plan treningowy.
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans selection:bg-emerald-500/40 selection:text-white">
       {/* Top Header */}
       <Header
         googleDrive={settings.googleDrive}
