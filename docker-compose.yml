@@ -3,12 +3,10 @@ version: '3.8'
 services:
   wkout-ai:
     build:
-      context: .
+      context: https://github.com/ar2r27/WKout_AI.git#main
       dockerfile: Dockerfile
     image: wkout-ai:latest
     container_name: wkout_ai_app
     restart: unless-stopped
     ports:
-      - "${PORT:-8080}:80"
-    environment:
-      - NODE_ENV=production
+      - "8080:80"
