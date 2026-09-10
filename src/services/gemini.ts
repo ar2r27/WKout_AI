@@ -67,7 +67,7 @@ export async function sendChatMessageToGemini(
   profile: UserProfile,
   currentPlan: WorkoutPlan | null,
   apiKey: string,
-  model: string = 'gemini-2.0-flash'
+  model: string = 'gemini-3.6-flash'
 ): Promise<AIResponseResult> {
   if (!apiKey || apiKey.trim() === '') {
     // Return intelligent simulation if no API key provided
@@ -85,7 +85,7 @@ export async function sendChatMessageToGemini(
 - Aktualny plan: ${currentPlan ? currentPlan.title : 'Brak aktywnego planu - ułóż nowy plan!'}
 `;
 
-  const selectedModel = model === 'gemini-2.5-flash' ? 'gemini-2.0-flash' : (model || 'gemini-2.0-flash').trim();
+  const selectedModel = (model || 'gemini-3.6-flash').trim();
 
   // Convert chat history to Gemini format (user and model turns only)
   const conversationTurns = [];

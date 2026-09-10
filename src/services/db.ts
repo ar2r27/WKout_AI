@@ -30,7 +30,7 @@ export const DEFAULT_PROFILE: UserProfile = {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   geminiApiKey: '',
-  geminiModel: 'gemini-2.0-flash',
+  geminiModel: 'gemini-3.6-flash',
   coachPersona: 'motivational',
   coachName: 'Alex',
   soundEnabled: true,
@@ -255,8 +255,8 @@ export async function clearChatHistory(): Promise<void> {
 // App Settings
 export async function getAppSettings(): Promise<AppSettings> {
   const settings = await getStoredValue<AppSettings>('settings', DEFAULT_SETTINGS);
-  if (!settings.geminiModel || settings.geminiModel === 'gemini-2.5-flash') {
-    settings.geminiModel = 'gemini-2.0-flash';
+  if (!settings.geminiModel || settings.geminiModel === 'gemini-2.5-flash' || settings.geminiModel === 'gemini-2.0-flash') {
+    settings.geminiModel = 'gemini-3.6-flash';
   }
   return settings;
 }
