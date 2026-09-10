@@ -9,7 +9,7 @@ export interface AIResponseResult {
 
 const COACH_SYSTEM_PROMPT = `
 Jesteś elitarnym, certyfikowanym trenerem personalnym, fizjoterapeutą i dietetykiem sportowym o imieniu Alex (lub imieniu wybranym przez użytkownika).
-Prowadzisz użytkownika w języku polskim.
+Prowadzisz użytkownika w języku polskim. Rozmawiaj jak życzliwy, motywujący człowiek i doświadczony trener.
 Twoim celem jest prowadzenie dialogu motywującego, edukacyjnego, opartego na dowodach naukowych (evidence-based strength & conditioning) oraz układanie precyzyjnych, bezpiecznych i skutecznych planów treningowych.
 
 Zasady:
@@ -20,43 +20,29 @@ Zasady:
    - Zgłoszone kontuzje, ograniczenia ruchowe i bóle stawów
    - Preferowaną częstotliwość (dni w tygodniu) i czas trwania jednostki treningowej.
 2. Gdy użytkownik prosi o:
-    - Ułożenie nowego planu treningowego,
-    - Zmianę lub modyfikację planu,
-    w pierwszej części odpowiedzi przedstaw zwięźle założenia i zalecenia, a na samym końcu odpowiedzi ZAWSZE dołącz poprawny składniowo blok JSON w znacznikach \`\`\`json
-    Format JSON planu:
-   {
-     "title": "Nazwa planu",
-     "description": "Krótki opis założeń",
-     "goal": "Cel planu",
-     "level": "Poziom",
-     "days": [
-       {
-         "id": "day-1",
-         "name": "Dzień 1: Nazwa (np. Góra Ciała / Push)",
-         "targetFocus": "Główne partie",
-         "estimatedDuration": 60,
-         "exercises": [
-           {
-             "id": "ex-1",
-             "exerciseId": "identyfikator_lub_nazwa",
-             "name": "Nazwa ćwiczenia po polsku",
-             "muscleGroup": "Partia mięśniowa",
-             "equipment": "Sprzęt (np. barbell, dumbbells, machine, cable)",
-             "targetSets": 3,
-             "targetReps": "8-10",
-             "targetRpe": 8,
-             "restSeconds": 90,
-             "notes": "Wskazówka techniczna"
-           }
-         ]
-       }
-     ]
-   }
-   \`\`\`
+   - Ułożenie nowego planu treningowego,
+   - Zmianę lub modyfikację planu,
+   w treści wiadomości tekstowej omów po ludzku założenia planu, podział partii i zalecenia.
+   NIGDY NIE PISZ KODU JSON ANI ZNACZNIKÓW KODU W TEKŚCIE WIADOMOŚCI. Użytkownik nie chce widzieć żadnego kodu ani składni JSON!
+   Do przekazania danych planu użyj wyłącznie wywołania funkcji propose_workout_plan. Aplikacja sama wyświetli plan użytkownikowi w postaci interaktywnej karty i doda go do treningu po jego akceptacji.
 3. Bądź pomocny, profesjonalny i precyzyjny. Nie używaj emotikonów - zachowaj przejrzysty, techniczny styl raportu sportowego.
 4. Jeśli użytkownik zgłasza ból lub kontuzję, natychmiast zaproponuj bezpieczny zamiennik i wyjaśnij biomechaniczną przyczynę.
 5. ZAWSZE odpowiadaj WYŁĄCZNIE w roli trenera personalnego. Twoim jedynym zadaniem jest układanie i modyfikowanie planów treningowych, dobór ćwiczeń i obciążeń oraz regeneracja. Nigdy nie dyskutuj o wersjach modeli AI, parametrach LLM ani architekturze sztucznej inteligencji.
 `;
+
+/**
+ * Clean any stray JSON syntax, code blocks, or braces from user-facing text
+ */
+function cleanTextFromJSON(text: string): string {
+  let cleaned = text;
+  // Strip code blocks
+  cleaned = cleaned.replace(/```(?:json(?::wkout_plan)?|JSON)?[\s\S]*?(?:```|$)/gi, '');
+  // Strip raw JSON object beginnings
+  cleaned = cleaned.replace(/\{\s*"(?:title|days|name|description|goal)"[\s\S]*$/gi, '');
+  // Strip standalone backticks
+  cleaned = cleaned.replace(/```/g, '');
+  return cleaned.trim();
+}
 
 /**
  * Call real Google Gemini API
@@ -103,6 +89,51 @@ export async function sendChatMessageToGemini(
     parts: [{ text: userMessage }]
   });
 
+  const workoutFunctionDeclaration = {
+    name: 'propose_workout_plan',
+    description: 'Wywołaj tę funkcję ZAWSZE, gdy układasz, proponujesz lub modyfikujesz plan treningowy dla użytkownika. W wiadomości tekstowej opisz plan po ludzku jak trener, a dane techniczne przekaż przez tę funkcję.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        title: { type: 'STRING', description: 'Tytuł planu treningowego' },
+        description: { type: 'STRING', description: 'Krótki opis założeń planu' },
+        goal: { type: 'STRING', description: 'Cel treningowy' },
+        level: { type: 'STRING', description: 'Poziom zaawansowania' },
+        days: {
+          type: 'ARRAY',
+          description: 'Lista dni treningowych',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              name: { type: 'STRING', description: 'Nazwa dnia' },
+              targetFocus: { type: 'STRING', description: 'Partie mięśniowe' },
+              estimatedDuration: { type: 'INTEGER', description: 'Czas trwania w minutach' },
+              exercises: {
+                type: 'ARRAY',
+                items: {
+                  type: 'OBJECT',
+                  properties: {
+                    name: { type: 'STRING', description: 'Nazwa ćwiczenia po polsku' },
+                    muscleGroup: { type: 'STRING', description: 'Grupa mięśniowa' },
+                    equipment: { type: 'STRING', description: 'Wymagany sprzęt' },
+                    targetSets: { type: 'INTEGER', description: 'Liczba serii' },
+                    targetReps: { type: 'STRING', description: 'Zakres powtórzeń (np. 8-10)' },
+                    targetRpe: { type: 'INTEGER', description: 'Docelowe RPE' },
+                    restSeconds: { type: 'INTEGER', description: 'Odpoczynek w sekundach' },
+                    notes: { type: 'STRING', description: 'Wskazówka techniczna' }
+                  },
+                  required: ['name', 'muscleGroup', 'targetSets', 'targetReps']
+                }
+              }
+            },
+            required: ['name', 'exercises']
+          }
+        }
+      },
+      required: ['title', 'days']
+    }
+  };
+
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey.trim()}`;
     const response = await fetch(url, {
@@ -115,6 +146,11 @@ export async function sendChatMessageToGemini(
           parts: [{ text: COACH_SYSTEM_PROMPT + '\n' + contextMessage }]
         },
         contents: conversationTurns,
+        tools: [
+          {
+            function_declarations: [workoutFunctionDeclaration]
+          }
+        ],
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 8192
@@ -130,8 +166,64 @@ export async function sendChatMessageToGemini(
 
     const data = await response.json();
     const candidate = data.candidates?.[0];
-    const rawText = candidate?.content?.parts?.[0]?.text || 'Nie udało się wygenerować odpowiedzi.';
+    const parts = candidate?.content?.parts || [];
 
+    let rawText = '';
+    let functionPlan: any = null;
+
+    for (const part of parts) {
+      if (part.text) {
+        rawText += part.text;
+      }
+      if (part.functionCall && (part.functionCall.name === 'propose_workout_plan' || part.functionCall.name === 'create_workout_plan')) {
+        functionPlan = part.functionCall.args;
+      }
+    }
+
+    // 1. If Gemini returned a structured function call, build the plan directly
+    if (functionPlan && (functionPlan.title || functionPlan.days)) {
+      const days = Array.isArray(functionPlan.days) ? functionPlan.days : [];
+      const proposedPlan: WorkoutPlan = {
+        id: `plan-${Date.now()}`,
+        title: functionPlan.title || 'Plan Treningowy od Trenera AI',
+        description: functionPlan.description || 'Plan przygotowany przez Trenera AI',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isActive: false,
+        goal: functionPlan.goal || profile.goal || 'Hipertrofia i siła',
+        level: functionPlan.level || profile.experience || 'Dopasowany',
+        author: 'ai',
+        days: days.map((day: any, dIdx: number) => ({
+          id: day.id || `day-${dIdx + 1}`,
+          name: day.name || `Dzień ${dIdx + 1}`,
+          targetFocus: day.targetFocus || 'Trening',
+          estimatedDuration: Number(day.estimatedDuration) || 60,
+          exercises: (day.exercises || []).map((ex: any, eIdx: number) => ({
+            id: ex.id || `ex-${dIdx + 1}-${eIdx + 1}`,
+            exerciseId: ex.exerciseId || `custom-${eIdx + 1}`,
+            name: ex.name || 'Ćwiczenie',
+            muscleGroup: ex.muscleGroup || 'Ogólne',
+            equipment: ex.equipment || 'Sprzęt siłowni',
+            targetSets: Number(ex.targetSets) || 3,
+            targetReps: String(ex.targetReps || '8-10'),
+            targetRpe: ex.targetRpe ? Number(ex.targetRpe) : 8,
+            restSeconds: Number(ex.restSeconds) || 90,
+            notes: ex.notes || ''
+          }))
+        }))
+      };
+
+      let cleanText = cleanTextFromJSON(rawText);
+      if (!cleanText) {
+        cleanText = 'Przygotowałem dla Ciebie spersonalizowany plan treningowy dopasowany do Twojego profilu i sprzętu. Znajdziesz go poniżej!';
+      }
+      return {
+        text: cleanText,
+        proposedPlan
+      };
+    }
+
+    // 2. Fallback: Parse plan from text if function calling was not used
     return parseAIResponse(rawText);
   } catch (err: any) {
     console.warn('Gemini API call failed, falling back to smart simulation:', err);
@@ -289,9 +381,7 @@ function parseAIResponse(text: string): AIResponseResult {
   }
 
   // 4. Also clean up any lingering unclosed code fences or raw JSON remnants so the user NEVER sees raw code dumps
-  cleanText = cleanText
-    .replace(/```(?:json(?::wkout_plan)?|JSON)?\s*[\s\S]*?(?:```|$)/gi, '')
-    .trim();
+  cleanText = cleanTextFromJSON(cleanText);
 
   // If the AI returned ONLY json with no conversational text, provide a polite default message
   if (!cleanText) {

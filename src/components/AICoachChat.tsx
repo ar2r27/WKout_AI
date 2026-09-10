@@ -10,6 +10,7 @@ import {
   Play
 } from 'lucide-react';
 import { ChatMessage, WorkoutPlan, UserProfile, AppSettings } from '../types';
+import { copyTextToClipboard } from '../utils/clipboard';
 
 interface AICoachChatProps {
   messages: ChatMessage[];
@@ -42,24 +43,10 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleCopyMessage = async (msgId: string, content: string) => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(content);
-      } else {
-        const textArea = document.createElement('textarea');
-        textArea.value = content;
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-      }
+    const success = await copyTextToClipboard(content);
+    if (success) {
       setCopiedMsgId(msgId);
       setTimeout(() => setCopiedMsgId(null), 2000);
-    } catch (err) {
-      console.warn('Copy failed:', err);
     }
   };
 
@@ -220,7 +207,7 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
                     {isPlanActive ? (
                       <div className="mt-4 flex flex-col sm:flex-row items-center gap-2">
                         <div className="flex-1 w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center gap-2">
-                          <Check className="w-4 h-4" /> Plan jest aktywny w Twoim treningu
+                          <Check className="w-4 h-4" /> Plan zaakceptowany i dodany do aplikacji
                         </div>
                         {onGoToWorkout && (
                           <button
@@ -236,7 +223,7 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
                         onClick={() => handleApplyProposedPlan(msg.action!.planData!)}
                         className="mt-4 w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black shadow-glow-green"
                       >
-                        <Check className="w-4 h-4" /> Zastosuj ten plan do mojego profilu
+                        <Check className="w-4 h-4" /> Zaakceptuj i dodaj plan do aplikacji
                       </button>
                     )}
                   </div>
