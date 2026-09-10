@@ -1,0 +1,17 @@
+{
+  "short_name": "WKout AI",
+  "name": "WKout AI - Inteligentny Trener Personalny",
+  "description": "Aplikacja treningowa z AI, lokalną bazą danych i kopią na Dysku Google",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#09090b",
+  "theme_color": "#10b981",
+  "display": "standalone",
+  "orientation": "portrait"
+}

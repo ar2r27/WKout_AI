@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  wkout-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wkout-ai:latest
+    container_name: wkout_ai_app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:80"
+    environment:
+      - NODE_ENV=production
