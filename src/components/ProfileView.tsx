@@ -17,7 +17,7 @@ import { EQUIPMENT_OPTIONS } from '../data/exercises';
 interface ProfileViewProps {
   profile: UserProfile;
   onSaveProfile: (updated: UserProfile) => void;
-  onAskCoachToAdaptPlan: () => void;
+  onAskCoachToAdaptPlan: (updatedProfile: UserProfile) => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
@@ -448,7 +448,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <button
             onClick={() => {
               handleSave();
-              onAskCoachToAdaptPlan();
+              onAskCoachToAdaptPlan(formData);
             }}
             className="flex-1 py-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-750 text-emerald-400 font-extrabold text-sm flex items-center justify-center gap-2 border border-emerald-500/30 transition shadow-sm"
           >

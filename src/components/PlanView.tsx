@@ -11,7 +11,8 @@ import {
   Edit2,
   Check,
   Search,
-  X
+  X,
+  Upload
 } from 'lucide-react';
 import { WorkoutPlan, WorkoutDay, PlanExercise, ExerciseDefinition } from '../types';
 import { EXERCISE_DATABASE } from '../data/exercises';
@@ -24,6 +25,7 @@ interface PlanViewProps {
   onDeletePlan: (planId: string) => void;
   onStartDaySession: (day: WorkoutDay) => void;
   onGoToCoach: () => void;
+  onOpenBackupModal?: () => void;
 }
 
 export const PlanView: React.FC<PlanViewProps> = ({
@@ -33,7 +35,8 @@ export const PlanView: React.FC<PlanViewProps> = ({
   onSavePlan,
   onDeletePlan,
   onStartDaySession,
-  onGoToCoach
+  onGoToCoach,
+  onOpenBackupModal
 }) => {
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(0);
   const [isAddExerciseModalOpen, setIsAddExerciseModalOpen] = useState(false);
@@ -47,14 +50,24 @@ export const PlanView: React.FC<PlanViewProps> = ({
           <Calendar className="w-12 h-12 mx-auto text-zinc-600 mb-3" />
           <h2 className="text-xl font-bold text-white">Brak planu treningowego</h2>
           <p className="text-sm text-zinc-400 mt-2 max-w-md mx-auto">
-            Porozmawiaj ze swoim Trenerem AI, który rozpisze dla Ciebie idealny plan pod Twój sprzęt i cel!
+            Porozmawiaj ze swoim Trenerem AI, który rozpisze dla Ciebie idealny plan pod Twój cel i sprzęt, lub wgraj własny plik z kopią zapasową.
           </p>
-          <button
-            onClick={onGoToCoach}
-            className="mt-5 px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm inline-flex items-center gap-2 shadow-glow-green transition"
-          >
-            <Sparkles className="w-4 h-4" /> Ułóż plan z Trenerem AI
-          </button>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={onGoToCoach}
+              className="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm inline-flex items-center gap-2 shadow-glow-green transition"
+            >
+              <Sparkles className="w-4 h-4" /> Ułóż plan z Trenerem AI
+            </button>
+            {onOpenBackupModal && (
+              <button
+                onClick={onOpenBackupModal}
+                className="px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 text-white font-bold text-sm inline-flex items-center gap-2 transition"
+              >
+                <Upload className="w-4 h-4 text-cyan-400" /> Wgraj z pliku JSON / Kopia
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

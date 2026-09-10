@@ -55,6 +55,7 @@ Zasady:
    \`\`\`
 3. Bądź pomocny, profesjonalny i precyzyjny. Nie używaj emotikonów - zachowaj przejrzysty, techniczny styl raportu sportowego.
 4. Jeśli użytkownik zgłasza ból lub kontuzję, natychmiast zaproponuj bezpieczny zamiennik i wyjaśnij biomechaniczną przyczynę.
+5. ZAWSZE odpowiadaj WYŁĄCZNIE w roli trenera personalnego. Twoim jedynym zadaniem jest układanie i modyfikowanie planów treningowych, dobór ćwiczeń i obciążeń oraz regeneracja. Nigdy nie dyskutuj o wersjach modeli AI, parametrach LLM ani architekturze sztucznej inteligencji.
 `;
 
 /**
@@ -66,7 +67,7 @@ export async function sendChatMessageToGemini(
   profile: UserProfile,
   currentPlan: WorkoutPlan | null,
   apiKey: string,
-  model: string = 'gemini-2.5-flash'
+  model: string = 'gemini-2.0-flash'
 ): Promise<AIResponseResult> {
   if (!apiKey || apiKey.trim() === '') {
     // Return intelligent simulation if no API key provided
@@ -81,50 +82,39 @@ export async function sendChatMessageToGemini(
 - Dni w tygodniu: ${profile.daysPerWeek}, Czas sesji: ${profile.sessionDuration} min
 - Dostępny sprzęt: ${profile.equipment.join(', ')} ${profile.customEquipment.length ? ', inne: ' + profile.customEquipment.join(', ') : ''}
 - Ograniczenia/Kontuzje: ${profile.injuries || 'Brak'}
-- Aktualny plan: ${currentPlan ? currentPlan.title : 'Brak'}
+- Aktualny plan: ${currentPlan ? currentPlan.title : 'Brak aktywnego planu - ułóż nowy plan!'}
 `;
 
-  // Format Gemini API payload
-  // Convert chat history to Gemini format
-  const contents = [
-    {
-      role: 'user',
-      parts: [{ text: COACH_SYSTEM_PROMPT + '\n' + contextMessage }]
-    },
-    {
-      role: 'model',
-      parts: [
-        {
-          text: 'Zrozumiałem! Jestem gotowy prowadzić użytkownika jako jego dedykowany trener personalny z uwzględnieniem jego sprzętu i celów.'
-        }
-      ]
-    }
-  ];
+  const selectedModel = model === 'gemini-2.5-flash' ? 'gemini-2.0-flash' : (model || 'gemini-2.0-flash').trim();
 
-  // Include last 6 messages for conversation context
-  const recentHistory = history.slice(-6);
+  // Convert chat history to Gemini format (user and model turns only)
+  const conversationTurns = [];
+  const recentHistory = history.filter(m => m.role === 'user' || m.role === 'assistant').slice(-6);
   for (const msg of recentHistory) {
-    contents.push({
+    conversationTurns.push({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
     });
   }
 
-  // Add the new user message
-  contents.push({
+  // Add current user message
+  conversationTurns.push({
     role: 'user',
     parts: [{ text: userMessage }]
   });
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey.trim()}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        contents,
+        system_instruction: {
+          parts: [{ text: COACH_SYSTEM_PROMPT + '\n' + contextMessage }]
+        },
+        contents: conversationTurns,
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 2048
@@ -148,7 +138,7 @@ export async function sendChatMessageToGemini(
     const sim = generateSmartOfflineResponse(userMessage, profile, currentPlan);
     return {
       ...sim,
-      text: `⚠️ *(Uwaga: Wystąpił problem z Gemini API: ${err?.message || 'Sprawdź klucz API w Ustawieniach'}. Odpowiedź wygenerowana przez wbudowany symulator trenera)*\n\n` + sim.text
+      text: `*(Uwaga: Problem z Gemini API: ${err?.message || 'Sprawdź klucz API w Ustawieniach'}. Odpowiedź wygenerowana przez wbudowany symulator trenera)*\n\n` + sim.text
     };
   }
 }

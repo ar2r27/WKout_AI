@@ -28,6 +28,7 @@ import {
   DEFAULT_SETTINGS
 } from './services/db';
 import { backupToGoogleDrive } from './services/googleDrive';
+import { sendChatMessageToGemini } from './services/gemini';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { ActiveWorkout } from './components/ActiveWorkout';
@@ -47,6 +48,7 @@ export const App: React.FC = () => {
   const [historySessions, setHistorySessions] = useState<WorkoutSession[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [isCoachLoading, setIsCoachLoading] = useState(false);
 
   const [currentTab, setCurrentTab] = useState<TabType>('workout');
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
@@ -206,6 +208,15 @@ export const App: React.FC = () => {
     await setActivePlanId(plan.id);
     setPlans(updatedPlans);
     setActivePlan(plan);
+
+    const confirmMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      role: 'system',
+      content: `Plan "${plan.title}" został pomyślnie ustawiony jako Twój aktywny plan treningowy. Możesz przejść do zakładki Trening lub Plany, aby rozpocząć!`,
+      timestamp: new Date().toISOString()
+    };
+    setChatMessages((prev) => [...prev, confirmMsg]);
+    await appendChatMessage(confirmMsg);
   };
 
   // PROFILE SAVING
@@ -214,33 +225,83 @@ export const App: React.FC = () => {
     await saveUserProfile(updated);
   };
 
-  const handleAskCoachToAdaptPlan = () => {
-    setCurrentTab('coach');
-    const msg: ChatMessage = {
+  // CHAT & AI COACH INTERACTION
+  const handleSendUserMessage = async (content: string, overrideProfile?: UserProfile) => {
+    const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: `Zaktualizowałem swój profil! Mój cel to ${profile.goal}, poziom: ${profile.experience}, mam do dyspozycji: ${profile.equipment.length} rodzajów sprzętu. Moje ograniczenia: "${profile.injuries || 'brak'}". Czy mógłbyś dopasować lub ułożyć dla mnie optymalny plan treningowy?`,
+      content,
       timestamp: new Date().toISOString()
     };
-    handleSendMessage(msg);
+
+    const updatedWithUser = [...chatMessages, userMsg];
+    setChatMessages(updatedWithUser);
+    await appendChatMessage(userMsg);
+
+    setIsCoachLoading(true);
+
+    try {
+      const effectiveProfile = overrideProfile || profile;
+      const response = await sendChatMessageToGemini(
+        content,
+        updatedWithUser,
+        effectiveProfile,
+        activePlan,
+        settings.geminiApiKey,
+        settings.geminiModel
+      );
+
+      const coachMsg: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        role: 'assistant',
+        content: response.text,
+        timestamp: new Date().toISOString(),
+        action: response.proposedPlan
+          ? {
+              type: 'plan_proposal',
+              planData: response.proposedPlan
+            }
+          : undefined
+      };
+
+      const finalMessages = [...updatedWithUser, coachMsg];
+      setChatMessages(finalMessages);
+      await appendChatMessage(coachMsg);
+    } catch (err: any) {
+      console.error('Error generating AI coach response:', err);
+      const errorMsg: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        role: 'assistant',
+        content: `Przepraszam, wystąpił problem podczas łączenia z Trenerem AI: ${err?.message || 'Nieznany błąd'}. Sprawdź swój klucz API w ustawieniach.`,
+        timestamp: new Date().toISOString()
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
+      await appendChatMessage(errorMsg);
+    } finally {
+      setIsCoachLoading(false);
+    }
+  };
+
+  const handleAskCoachToAdaptPlan = (updatedProfile: UserProfile) => {
+    handleSaveProfile(updatedProfile);
+    setCurrentTab('coach');
+
+    const prompt = `Zaktualizowałem swój profil!
+Cel: ${updatedProfile.goal}
+Poziom zaawansowania: ${updatedProfile.experience}
+Dostępny sprzęt: ${updatedProfile.equipment.join(', ')}
+Dni treningowe w tygodniu: ${updatedProfile.daysPerWeek}
+Czas na sesję: ok. ${updatedProfile.sessionDuration} minut
+Ograniczenia / kontuzje / uwagi: "${updatedProfile.injuries || 'brak'}"
+
+Przeanalizuj te dane i przygotuj dla mnie dopasowany, kompletny plan treningowy. Zwróć go w formacie JSON planu treningowego, abym mógł go jednym kliknięciem zatwierdzić do mojego profilu.`;
+
+    handleSendUserMessage(prompt, updatedProfile);
   };
 
   const handleAskCoachAboutSession = (summaryText: string) => {
     setCurrentTab('coach');
-    const msg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content: summaryText,
-      timestamp: new Date().toISOString()
-    };
-    handleSendMessage(msg);
-  };
-
-  // CHAT
-  const handleSendMessage = async (msg: ChatMessage) => {
-    const updated = [...chatMessages, msg];
-    setChatMessages(updated);
-    await appendChatMessage(msg);
+    handleSendUserMessage(summaryText);
   };
 
   const handleClearChat = async () => {
@@ -319,13 +380,15 @@ export const App: React.FC = () => {
             onDeletePlan={handleDeletePlan}
             onStartDaySession={handleStartSession}
             onGoToCoach={() => setCurrentTab('coach')}
+            onOpenBackupModal={() => setIsBackupModalOpen(true)}
           />
         )}
 
         {currentTab === 'coach' && (
           <AICoachChat
             messages={chatMessages}
-            onSendMessage={handleSendMessage}
+            onSendUserMessage={handleSendUserMessage}
+            isLoading={isCoachLoading}
             onClearChat={handleClearChat}
             onApplyPlan={handleApplyPlanFromAI}
             profile={profile}

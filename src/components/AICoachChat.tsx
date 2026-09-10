@@ -8,11 +8,11 @@ import {
   Calendar
 } from 'lucide-react';
 import { ChatMessage, WorkoutPlan, UserProfile, AppSettings } from '../types';
-import { sendChatMessageToGemini } from '../services/gemini';
 
 interface AICoachChatProps {
   messages: ChatMessage[];
-  onSendMessage: (msg: ChatMessage) => void;
+  onSendUserMessage: (content: string) => Promise<void>;
+  isLoading: boolean;
   onClearChat: () => void;
   onApplyPlan: (plan: WorkoutPlan) => void;
   profile: UserProfile;
@@ -23,7 +23,8 @@ interface AICoachChatProps {
 
 export const AICoachChat: React.FC<AICoachChatProps> = ({
   messages,
-  onSendMessage,
+  onSendUserMessage,
+  isLoading,
   onClearChat,
   onApplyPlan,
   profile,
@@ -32,7 +33,6 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
   onOpenSettings
 }) => {
   const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [appliedPlanId, setAppliedPlanId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -57,65 +57,12 @@ export const AICoachChat: React.FC<AICoachChatProps> = ({
     if (!content || isLoading) return;
 
     setInputText('');
-
-    const userMessage: ChatMessage = {
-      id: `msg-user-${Date.now()}`,
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString()
-    };
-
-    onSendMessage(userMessage);
-    setIsLoading(true);
-
-    try {
-      const response = await sendChatMessageToGemini(
-        content,
-        messages,
-        profile,
-        currentPlan,
-        settings.geminiApiKey,
-        settings.geminiModel
-      );
-
-      const aiMessage: ChatMessage = {
-        id: `msg-ai-${Date.now()}`,
-        role: 'assistant',
-        content: response.text,
-        timestamp: new Date().toISOString(),
-        action: response.proposedPlan
-          ? {
-              type: 'plan_proposal',
-              planData: response.proposedPlan
-            }
-          : undefined
-      };
-
-      onSendMessage(aiMessage);
-    } catch (err: any) {
-      const errorMessage: ChatMessage = {
-        id: `msg-err-${Date.now()}`,
-        role: 'assistant',
-        content: `Przepraszam, wystąpił błąd: ${err?.message || 'Nie udało się połączyć z modelem'}.`,
-        timestamp: new Date().toISOString()
-      };
-      onSendMessage(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
+    await onSendUserMessage(content);
   };
 
   const handleApplyProposedPlan = (plan: WorkoutPlan) => {
     onApplyPlan(plan);
     setAppliedPlanId(plan.id);
-    // Add confirmation message
-    const confirmMsg: ChatMessage = {
-      id: `msg-sys-${Date.now()}`,
-      role: 'system',
-      content: `✅ Pomyślnie wdrożono plan: "${plan.title}" jako Twój bieżący aktywny plan treningowy! Możesz go teraz zobaczyć w zakładce "Mój Plan" lub od razu rozpocząć trening.`,
-      timestamp: new Date().toISOString()
-    };
-    onSendMessage(confirmMsg);
   };
 
   return (

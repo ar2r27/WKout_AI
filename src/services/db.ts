@@ -30,7 +30,7 @@ export const DEFAULT_PROFILE: UserProfile = {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   geminiApiKey: '',
-  geminiModel: 'gemini-2.5-flash',
+  geminiModel: 'gemini-2.0-flash',
   coachPersona: 'motivational',
   coachName: 'Alex',
   soundEnabled: true,
@@ -43,230 +43,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   }
 };
 
-export const DEFAULT_INITIAL_PLAN: WorkoutPlan = {
-  id: 'plan-default-ppl',
-  title: 'PPL Klasyczny – Hipertrofia & Siła (3 Dni)',
-  description: 'Kompleksowy plan Push-Pull-Legs oparty na wielostawach i izolacjach. Zaprojektowany pod budowę masy mięśniowej.',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  isActive: true,
-  goal: 'Hipertrofia i siła ogólna',
-  level: 'Średniozaawansowany',
-  author: 'ai',
-  days: [
-    {
-      id: 'day-push',
-      name: 'Dzień 1: PUSH (Klatka, Barki, Triceps)',
-      targetFocus: 'Wypychanie i górne partie pchające',
-      estimatedDuration: 60,
-      exercises: [
-        {
-          id: 'ex-1',
-          exerciseId: 'bench_press_barbell',
-          name: 'Wyciskanie sztangi na ławce poziomej',
-          muscleGroup: 'Klatka piersiowa',
-          equipment: 'barbell',
-          targetSets: 4,
-          targetReps: '6-8',
-          targetRpe: 8,
-          restSeconds: 120,
-          notes: 'Ruch kontrolowany, 2s w dół, pauza 1s na klatce.'
-        },
-        {
-          id: 'ex-2',
-          exerciseId: 'incline_dumbbell_press',
-          name: 'Wyciskanie hantli na skosie dodatnim (30°)',
-          muscleGroup: 'Klatka piersiowa',
-          equipment: 'dumbbells',
-          targetSets: 3,
-          targetReps: '8-10',
-          targetRpe: 8,
-          restSeconds: 90,
-          notes: 'Głębokie rozciągnięcie w dolnej fazie.'
-        },
-        {
-          id: 'ex-3',
-          exerciseId: 'overhead_press',
-          name: 'Wyciskanie żołnierskie (OHP)',
-          muscleGroup: 'Barki',
-          equipment: 'barbell',
-          targetSets: 3,
-          targetReps: '8-10',
-          targetRpe: 8,
-          restSeconds: 90,
-          notes: 'Brzuch i pośladki mocno spięte.'
-        },
-        {
-          id: 'ex-4',
-          exerciseId: 'lateral_raises',
-          name: 'Wznosy hantli bokiem',
-          muscleGroup: 'Barki',
-          equipment: 'dumbbells',
-          targetSets: 4,
-          targetReps: '12-15',
-          targetRpe: 9,
-          restSeconds: 60,
-          notes: 'Ruch inicjowany łokciami, bez bujania.'
-        },
-        {
-          id: 'ex-5',
-          exerciseId: 'cable_tricep_pushdown',
-          name: 'Prostowanie ramion na wyciągu (sznur)',
-          muscleGroup: 'Triceps',
-          equipment: 'cable_machine',
-          targetSets: 3,
-          targetReps: '10-12',
-          targetRpe: 9,
-          restSeconds: 60,
-          notes: 'Rozszerzaj sznur w dolnej fazie.'
-        }
-      ]
-    },
-    {
-      id: 'day-pull',
-      name: 'Dzień 2: PULL (Grzbiet, Tył barku, Biceps)',
-      targetFocus: 'Przyciąganie i plecy',
-      estimatedDuration: 65,
-      exercises: [
-        {
-          id: 'ex-6',
-          exerciseId: 'lat_pulldown',
-          name: 'Ściąganie drążka wyciągu górnego',
-          muscleGroup: 'Plecy',
-          equipment: 'cable_machine',
-          targetSets: 4,
-          targetReps: '8-10',
-          targetRpe: 8,
-          restSeconds: 90,
-          notes: 'Ściągaj łopatki w dół przed zgięciem łokci.'
-        },
-        {
-          id: 'ex-7',
-          exerciseId: 'barbell_row',
-          name: 'Wiosłowanie sztangą w opadzie tułowia',
-          muscleGroup: 'Plecy',
-          equipment: 'barbell',
-          targetSets: 4,
-          targetReps: '6-8',
-          targetRpe: 8,
-          restSeconds: 120,
-          notes: 'Stabilny korpus, gryf do pępka.'
-        },
-        {
-          id: 'ex-8',
-          exerciseId: 'seated_cable_row',
-          name: 'Przyciąganie wyciągu dolnego siedząc',
-          muscleGroup: 'Plecy',
-          equipment: 'cable_machine',
-          targetSets: 3,
-          targetReps: '10-12',
-          targetRpe: 8,
-          restSeconds: 75,
-          notes: 'Przytrzymaj 1 sekundę w spięciu.'
-        },
-        {
-          id: 'ex-9',
-          exerciseId: 'cable_face_pull',
-          name: 'Face Pull na wyciągu',
-          muscleGroup: 'Barki',
-          equipment: 'cable_machine',
-          targetSets: 3,
-          targetReps: '12-15',
-          targetRpe: 8,
-          restSeconds: 60,
-          notes: 'Kluczowe dla zdrowia barków i retrakcji.'
-        },
-        {
-          id: 'ex-10',
-          exerciseId: 'incline_dumbbell_curl',
-          name: 'Uginanie hantli na ławce skośnej (biceps)',
-          muscleGroup: 'Biceps',
-          equipment: 'dumbbells',
-          targetSets: 3,
-          targetReps: '10-12',
-          targetRpe: 9,
-          restSeconds: 60,
-          notes: 'Maksymalne rozciągnięcie głowy długiej.'
-        }
-      ]
-    },
-    {
-      id: 'day-legs',
-      name: 'Dzień 3: LEGS & CORE (Nogi i Brzuch)',
-      targetFocus: 'Dolna część ciała i stabilizacja korpusu',
-      estimatedDuration: 60,
-      exercises: [
-        {
-          id: 'ex-11',
-          exerciseId: 'barbell_back_squat',
-          name: 'Przysiad ze sztangą na plecach',
-          muscleGroup: 'Czworogłowe ud',
-          equipment: 'barbell',
-          targetSets: 4,
-          targetReps: '6-8',
-          targetRpe: 8,
-          restSeconds: 150,
-          notes: 'Głęboki, kontrolowany przysiad.'
-        },
-        {
-          id: 'ex-12',
-          exerciseId: 'romanian_deadlift',
-          name: 'Rumuński martwy ciąg z hantlami (RDL)',
-          muscleGroup: 'Dwugłowe ud / Pośladki',
-          equipment: 'dumbbells',
-          targetSets: 3,
-          targetReps: '8-10',
-          targetRpe: 8,
-          restSeconds: 90,
-          notes: 'Wypchnij biodra mocno w tył.'
-        },
-        {
-          id: 'ex-13',
-          exerciseId: 'leg_press_machine',
-          name: 'Wypychanie na suwnicy skośnej',
-          muscleGroup: 'Czworogłowe ud',
-          equipment: 'leg_press_machine',
-          targetSets: 3,
-          targetReps: '10-12',
-          targetRpe: 9,
-          restSeconds: 90,
-          notes: 'Nie blokuj kolan w górze.'
-        },
-        {
-          id: 'ex-14',
-          exerciseId: 'standing_calf_raise',
-          name: 'Wspięcia na palce stojąc',
-          muscleGroup: 'Łydki',
-          equipment: 'dumbbells',
-          targetSets: 4,
-          targetReps: '15-20',
-          targetRpe: 9,
-          restSeconds: 45,
-          notes: 'Zatrzymaj 2 sekundy w dole.'
-        },
-        {
-          id: 'ex-15',
-          exerciseId: 'hanging_leg_raise',
-          name: 'Wznosy nóg w zwisie na drążku',
-          muscleGroup: 'Brzuch',
-          equipment: 'pullup_bar',
-          targetSets: 3,
-          targetReps: '12-15',
-          targetRpe: 9,
-          restSeconds: 60,
-          notes: 'Podwijaj miednicę do góry.'
-        }
-      ]
-    }
-  ]
-};
-
 export const INITIAL_CHAT_MESSAGE: ChatMessage = {
   id: 'msg-welcome',
   role: 'assistant',
-  content: 'Cześć! Jestem Twoim trenerem personalnym AI napędzanym przez Gemini.\n\nPrzeanalizowałem Twój profil i przygotowałem dla Ciebie wstępny plan **PPL (Push-Pull-Legs 3 dni)**. \n\nMożesz ze mną swobodnie porozmawiać o wszystkim:\n- **Dostosować ćwiczenia** pod sprzęt na Twojej siłowni lub w domu,\n- **Zgłosić ograniczenia lub ból stawu**, a natychmiast zamienię ćwiczenie na bezpieczne,\n- **Skrócić lub wydłużyć trening**, jeśli dziś masz mniej czasu,\n- **Zaplanować progres ciężaru** na kolejną sesję.\n\nNapisz, jaki masz dziś cel lub o co chcesz zapytać.',
+  content: 'Cześć! Jestem Twoim trenerem personalnym AI napędzanym przez Gemini.\n\nNie masz jeszcze aktywnego planu treningowego. Uzupełnij swój profil (cele, poziom, dostępne maszyny) i kliknij "Zapisz i poproś Trenera AI o dopasowanie planu" lub napisz do mnie w czacie.\n\nMożesz także wgrać własną bazę w zakładce Dysk / Kopia.\n\nW czym mogę Ci dziś pomóc?',
   timestamp: new Date().toISOString()
 };
+
 
 // Open IndexedDB
 function openDB(): Promise<IDBDatabase> {
@@ -374,7 +157,9 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
 
 // Workout Plans
 export async function getWorkoutPlans(): Promise<WorkoutPlan[]> {
-  return getStoredValue<WorkoutPlan[]>('plans', [DEFAULT_INITIAL_PLAN]);
+  const plans = await getStoredValue<WorkoutPlan[]>('plans', []);
+  // Filter out any leftover initial dummy plan
+  return plans.filter((p) => p.id !== 'plan-default-ppl');
 }
 
 export async function saveWorkoutPlans(plans: WorkoutPlan[]): Promise<void> {
@@ -383,7 +168,8 @@ export async function saveWorkoutPlans(plans: WorkoutPlan[]): Promise<void> {
 
 export async function getActivePlan(): Promise<WorkoutPlan | null> {
   const plans = await getWorkoutPlans();
-  const activeId = await getStoredValue<string | null>('activePlanId', DEFAULT_INITIAL_PLAN.id);
+  if (plans.length === 0) return null;
+  const activeId = await getStoredValue<string | null>('activePlanId', null);
   const found = plans.find((p) => p.id === activeId);
   return found || plans[0] || null;
 }
@@ -468,7 +254,11 @@ export async function clearChatHistory(): Promise<void> {
 
 // App Settings
 export async function getAppSettings(): Promise<AppSettings> {
-  return getStoredValue<AppSettings>('settings', DEFAULT_SETTINGS);
+  const settings = await getStoredValue<AppSettings>('settings', DEFAULT_SETTINGS);
+  if (!settings.geminiModel || settings.geminiModel === 'gemini-2.5-flash') {
+    settings.geminiModel = 'gemini-2.0-flash';
+  }
+  return settings;
 }
 
 export async function saveAppSettings(settings: AppSettings): Promise<void> {
@@ -479,7 +269,7 @@ export async function saveAppSettings(settings: AppSettings): Promise<void> {
 export async function exportDatabaseToJSON(): Promise<string> {
   const profile = await getUserProfile();
   const plans = await getWorkoutPlans();
-  const activePlanId = await getStoredValue<string | null>('activePlanId', DEFAULT_INITIAL_PLAN.id);
+  const activePlanId = await getStoredValue<string | null>('activePlanId', null);
   const workoutSessions = await getWorkoutSessionsHistory();
   const chatMessages = await getChatMessages();
   const settings = await getAppSettings();

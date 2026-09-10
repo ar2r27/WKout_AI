@@ -460,9 +460,8 @@ export const DataBackupModal: React.FC<DataBackupModalProps> = ({
                     }
                     className="w-full bg-zinc-900 border border-zinc-750 text-xs text-white rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Zalecany)</option>
-                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Szybki)</option>
-                    <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Zalecany - szybki)</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Stabilny)</option>
                     <option value="gemini-1.5-pro">Gemini 1.5 Pro (Głęboka analiza)</option>
                   </select>
                 </div>
